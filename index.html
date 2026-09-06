@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Расписание — Лицей №48</title>
+<style>
+  :root {
+    --cream: #f3e7cf;
+    --cream-deep: #ecdcb8;
+    --terracotta: #bf5a34;
+    --terracotta-dark: #9a4527;
+    --olive: #5c6b3f;
+    --olive-dark: #414a2d;
+    --ochre: #d69a3f;
+    --charcoal: #3a2a1e;
+    --stone-line: #d9c49a;
+    --error: #8f2f2f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    font-family: Georgia, 'Times New Roman', serif;
+    color: var(--charcoal);
+    padding: 18px 10px 40px;
+  }
+  .frame {
+    max-width: 1100px;
+    margin: 0 auto;
+    border: 2px solid var(--terracotta-dark);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--cream);
+  }
+  .header {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(58,42,30,0.55) 0%, rgba(58,42,30,0.15) 55%, rgba(191,90,52,0.85) 100%),
+      linear-gradient(120deg, #7a5230 0%, #b06a3a 35%, #d69a3f 70%, #e0b464 100%);
+    padding: 22px 20px 14px;
+    text-align: center;
+  }
+  .crest { width: 50px; height: 62px; margin: 0 auto 6px; }
+  .eyebrow { color: var(--cream); font-size: 11.5px; letter-spacing: 0.08em; opacity: 0.9; margin: 0 0 4px; }
+  h1 {
+    font-family: 'Palatino Linotype', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(22px, 5.5vw, 36px);
+    color: var(--cream);
+    margin: 0;
+    text-shadow: 0 2px 6px rgba(58,42,30,0.5);
+  }
+
+  .mode-switch {
+    display: flex;
+    flex-wrap: wrap;
+    background: var(--olive-dark);
+    padding: 6px;
+    gap: 5px;
+  }
+  .mode-switch button {
+    flex: 1 1 auto;
+    min-width: 92px;
+    padding: 8px 5px;
+    border: none;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--cream);
+    font-family: Georgia, serif;
+    font-size: 12.5px;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .mode-switch button.active {
+    background: var(--terracotta);
+    opacity: 1;
+    font-weight: bold;
+  }
+
+  .controls {
+    background: var(--olive);
+    padding: 10px 16px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .controls.active { display: flex; }
+  .controls label { color: var(--cream); font-size: 13px; white-space: nowrap; }
+  .controls select, .controls input {
+    font-family: Georgia, serif;
+    font-size: 14px;
+    padding: 6px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--olive-dark);
+    background: var(--cream);
+    color: var(--charcoal);
+    flex: 1;
+    min-width: 110px;
+  }
+
+  .status-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; flex-wrap: wrap;
+    padding: 6px 16px; background: var(--olive-dark); color: var(--cream); font-size: 11.5px;
+  }
+  .status-bar button {
+    background: var(--terracotta); color: var(--cream); border: 1px solid var(--terracotta-dark);
+    border-radius: 3px; padding: 4px 10px; font-size: 11.5px; cursor: pointer; font-family: Georgia, serif;
+  }
+  .status-bar button:hover { background: var(--terracotta-dark); }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ochre); margin-right: 6px; }
+  .status-dot.live { background: #7fae5a; }
+  .status-dot.error { background: var(--error); }
+
+  .error-banner {
+    display: none; background: var(--error); color: var(--cream);
+    font-size: 12.5px; padding: 10px 16px; line-height: 1.4;
+  }
+  .error-banner.show { display: block; }
+
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; min-width: 780px; border-collapse: collapse; }
+  thead th {
+    background: var(--olive); color: var(--cream); font-size: 14px; font-weight: normal;
+    padding: 10px 8px; border: 1px solid var(--olive-dark); text-align: center;
+  }
+  thead th.num-col { background: var(--terracotta-dark); width: 90px; }
+  tbody td {
+    border: 1px solid var(--stone-line); padding: 8px 8px; vertical-align: top;
+    font-size: 13px; line-height: 1.35; background: var(--cream);
+  }
+  tr:nth-child(even) td { background: var(--cream-deep); }
+  .num-cell { text-align: center; background: var(--terracotta) !important; color: var(--cream); font-weight: bold; }
+  .num-cell .n { font-size: 20px; display: block; }
+  .num-cell .time { font-size: 11px; display: block; margin-top: 2px; }
+  .num-cell .break { font-size: 10px; color: var(--ochre); display: block; margin-top: 3px; font-style: italic; }
+  .subject { font-weight: bold; color: var(--terracotta-dark); display: block; margin-bottom: 2px; }
+  .teacher { display: block; color: var(--charcoal); font-size: 12px; }
+  .klass-tag {
+    display: inline-block; font-size: 10.5px; color: var(--olive-dark);
+    background: var(--ochre); padding: 0 5px; border-radius: 3px; margin-bottom: 2px;
+  }
+  .room {
+    display: inline-block; margin-top: 4px; font-size: 11px;
+    color: var(--cream); background: var(--olive); padding: 1px 7px; border-radius: 3px;
+  }
+  .empty { text-align: center; color: var(--stone-line); }
+  .loading-row td { text-align: center; padding: 30px; color: var(--olive-dark); font-style: italic; }
+  hr.sep { border: none; border-top: 1px dashed var(--stone-line); margin: 5px 0; }
+
+  .footer {
+    background: var(--olive-dark); color: var(--cream); text-align: center;
+    font-size: 12px; letter-spacing: 0.06em; padding: 12px 10px;
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 21px; }
+    .controls select, .controls input { min-width: 90px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="frame">
+
+  <div class="header">
+    <svg class="crest" viewBox="0 0 64 78" xmlns="http://www.w3.org/2000/svg">
+      <path d="M32 2 L60 12 V38 C60 58 46 70 32 76 C18 70 4 58 4 38 V12 Z" fill="#f3e7cf" stroke="#3a2a1e" stroke-width="2"/>
+      <circle cx="32" cy="30" r="12" fill="#bf5a34" opacity="0.85"/>
+      <path d="M32 20 L36 28 L44 28 L38 33 L40 41 L32 36 L24 41 L26 33 L20 28 L28 28 Z" fill="#d69a3f"/>
+      <text x="32" y="60" text-anchor="middle" font-size="8" fill="#3a2a1e" font-family="Georgia, serif">№48</text>
+    </svg>
+    <p class="eyebrow">ЛИЦЕЙ №48 ИМ. А. В. СУВОРОВА · КРАСНОДАР · 1 СМЕНА</p>
+    <h1>Расписание уроков</h1>
+  </div>
+
+  <div class="mode-switch">
+    <button data-mode="class" class="active">По классам</button>
+    <button data-mode="teacher">По учителям</button>
+    <button data-mode="room">По кабинетам</button>
+    <button data-mode="subject">По урокам</button>
+    <button data-mode="time">По времени</button>
+  </div>
+
+  <div class="controls active" id="ctrl-class">
+    <label for="classSelect">Класс:</label>
+    <select id="classSelect"></select>
+  </div>
+
+  <div class="controls" id="ctrl-teacher">
+    <label for="teacherInput">Учитель:</label>
+    <input list="teacherList" id="teacherInput" placeholder="Начните вводить фамилию…">
+    <datalist id="teacherList"></datalist>
+  </div>
+
+  <div class="controls" id="ctrl-room">
+    <label for="roomSelect">Кабинет:</label>
+    <select id="roomSelect"></select>
+  </div>
+
+  <div class="controls" id="ctrl-subject">
+    <label for="subjectSelect">Предмет:</label>
+    <select id="subjectSelect"></select>
+  </div>
+
+  <div class="controls" id="ctrl-time">
+    <label for="daySelect">День:</label>
+    <select id="daySelect"></select>
+    <label for="lessonSelect">Урок:</label>
+    <select id="lessonSelect"></select>
+  </div>
+
+  <div class="status-bar">
+    <span><span id="statusDot" class="status-dot"></span><span id="statusText">Загрузка данных из таблицы…</span></span>
+    <button id="refreshBtn">Обновить сейчас</button>
+  </div>
+
+  <div id="errorBanner" class="error-banner"></div>
+
+  <div class="table-wrap">
+    <table>
+      <thead id="thead">
+        <tr>
+          <th class="num-col">№ урока</th>
+          <th>Понедельник</th>
+          <th>Вторник</th>
+          <th>Среда</th>
+          <th>Четверг</th>
+          <th>Пятница</th>
+          <th>Суббота</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr class="loading-row"><td colspan="7">Загрузка расписания…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">Знания · Честь · Отечество · Лицей №48 им. А. В. Суворова, Краснодар</div>
+
+</div>
+
+<script>
+const SHEET_ID = '1tGzeVcjc4gKja-uegpOFkvOW61I50SP3zPipSCfTxqY';
+const SHEET_NAME = 'Лист1';
+const COL_DAY = 0;
+const DAY_ORDER = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+const CLASS_LABEL_RE = /^\d{1,2}\s*[А-Яа-яЁё]$/;
+const DEFAULT_CLASS = '9 б';
+
+const BELL_TIMES = {
+  '1': { time: '08:00–08:45', brk: 'перемена 10 мин' },
+  '2': { time: '08:55–09:40', brk: 'перемена 10 мин' },
+  '3': { time: '09:50–10:35', brk: 'перемена 10 мин' },
+  '4': { time: '10:45–11:30', brk: 'перемена 15 мин' },
+  '5': { time: '11:45–12:30', brk: 'перемена 10 мин' },
+  '6': { time: '12:40–13:25', brk: 'перемена 10 мин' },
+  '7': { time: '13:35–14:20', brk: 'перемена 10 мин' },
+  '8': { time: '14:30–15:15', brk: '' }
+};
+
+const GRID_THEAD = `<tr>
+  <th class="num-col">№ урока</th>
+  <th>Понедельник</th><th>Вторник</th><th>Среда</th>
+  <th>Четверг</th><th>Пятница</th><th>Суббота</th>
+</tr>`;
+const TIME_THEAD = `<tr>
+  <th>Класс</th><th>Предмет</th><th>Учитель</th><th>Кабинет</th>
+</tr>`;
+
+let classMap = {};
+let scheduleData = {};
+let teacherSet = new Set();
+let roomSet = new Set();
+let subjectSet = new Set();
+let mode = 'class';
+let currentClass = DEFAULT_CLASS;
+let currentTeacher = '';
+let currentRoom = '';
+let currentSubject = '';
+let currentDay = DAY_ORDER[0];
+let currentLesson = '1';
+
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i+1] === '"') { field += '"'; i++; } else { inQuotes = false; } }
+      else { field += c; }
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else { field += c; }
+    }
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function detectClassColumns(headerRow) {
+  const map = {};
+  headerRow.forEach((cell, idx) => {
+    const val = (cell || '').trim();
+    if (CLASS_LABEL_RE.test(val)) {
+      map[val] = { lessonCol: idx - 1, subjectCol: idx, roomCol: idx + 1 };
+    }
+  });
+  return map;
+}
+
+function buildSchedule(rows) {
+  const header = rows[0] || [];
+  classMap = detectClassColumns(header);
+  const days = {};
+  const currentLessonRefs = {};
+  let day = null;
+
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const dayName = (row[COL_DAY] || '').trim();
+    if (dayName && DAY_ORDER.includes(dayName)) {
+      day = dayName;
+      if (!days[day]) days[day] = {};
+      Object.keys(classMap).forEach(k => { currentLessonRefs[k] = null; });
+    }
+    if (!day) continue;
+
+    Object.keys(classMap).forEach(className => {
+      const cols = classMap[className];
+      const lessonNum = (row[cols.lessonCol] || '').trim();
+      const subject = (row[cols.subjectCol] || '').trim();
+      const room = (row[cols.roomCol] || '').trim();
+
+      if (lessonNum) {
+        if (!days[day][lessonNum]) days[day][lessonNum] = {};
+        const entry = { subject, room, teacher: '' };
+        days[day][lessonNum][className] = entry;
+        currentLessonRefs[className] = entry;
+        if (subject) subjectSet.add(subject);
+        if (room) roomSet.add(room);
+      } else if (subject && currentLessonRefs[className] && !currentLessonRefs[className].teacher) {
+        currentLessonRefs[className].teacher = subject;
+        teacherSet.add(subject);
+      }
+    });
+  }
+  return days;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function fillSelect(select, values, current) {
+  select.innerHTML = '';
+  values.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    if (v === current) opt.selected = true;
+    select.appendChild(opt);
+  });
+}
+
+function populateControls() {
+  const classNames = Object.keys(classMap);
+  if (!classNames.includes(currentClass) && classNames.length) currentClass = classNames[0];
+  fillSelect(document.getElementById('classSelect'), classNames, currentClass);
+
+  const teacherList = document.getElementById('teacherList');
+  teacherList.innerHTML = '';
+  Array.from(teacherSet).sort((a,b)=>a.localeCompare(b,'ru')).forEach(name => {
+    const opt = document.createElement('option'); opt.value = name; teacherList.appendChild(opt);
+  });
+
+  const rooms = Array.from(roomSet).sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));
+  if (!currentRoom && rooms.length) currentRoom = rooms[0];
+  fillSelect(document.getElementById('roomSelect'), rooms, currentRoom);
+
+  const subjects = Array.from(subjectSet).sort((a,b)=>a.localeCompare(b,'ru'));
+  if (!currentSubject && subjects.length) currentSubject = subjects[0];
+  fillSelect(document.getElementById('subjectSelect'), subjects, currentSubject);
+
+  fillSelect(document.getElementById('daySelect'), DAY_ORDER, currentDay);
+  fillSelect(document.getElementById('lessonSelect'), Object.keys(BELL_TIMES), currentLesson);
+}
+
+// generic grid renderer: filterFn(className, entry) -> bool, cellHtmlFn(className, entry) -> html
+function renderGrid(filterFn, cellHtmlFn) {
+  document.getElementById('thead').innerHTML = GRID_THEAD;
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  for (let n = 1; n <= 8; n++) {
+    const num = String(n);
+    const bell = BELL_TIMES[num] || { time: '', brk: '' };
+    const tr = document.createElement('tr');
+    const numTd = document.createElement('td');
+    numTd.className = 'num-cell';
+    numTd.innerHTML = `<span class="n">${num}</span><span class="time">${bell.time}</span>` +
+      (bell.brk ? `<span class="break">${bell.brk}</span>` : '');
+    tr.appendChild(numTd);
+
+    DAY_ORDER.forEach(day => {
+      const bucket = (scheduleData[day] && scheduleData[day][num]) ? scheduleData[day][num] : {};
+      const matches = Object.keys(bucket)
+        .map(className => ({ className, entry: bucket[className] }))
+        .filter(({ className, entry }) => filterFn(className, entry));
+      const td = document.createElement('td');
+      if (matches.length) {
+        td.innerHTML = matches.map(({ className, entry }) => cellHtmlFn(className, entry)).join('<hr class="sep">');
+      } else {
+        td.className = 'empty';
+        td.textContent = '—';
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  }
+}
+
+function renderClassView() {
+  if (!currentClass) { renderEmptyMsg('Класс не найден.'); return; }
+  renderGrid(
+    (className) => className === currentClass,
+    (className, entry) => entry.subject
+      ? `<span class="subject">${escapeHtml(entry.subject)}</span>` +
+        (entry.teacher ? `<span class="teacher">${escapeHtml(entry.teacher)}</span>` : '') +
+        (entry.room ? `<span class="room">№${escapeHtml(entry.room)}</span>` : '')
+      : ''
+  );
+}
+
+function renderTeacherView() {
+  if (!currentTeacher) { renderEmptyMsg('Введите фамилию учителя выше, чтобы увидеть его занятия.'); return; }
+  renderGrid(
+    (className, entry) => entry.teacher === currentTeacher,
+    (className, entry) => `<span class="klass-tag">${escapeHtml(className)}</span>` +
+      `<span class="subject">${escapeHtml(entry.subject)}</span>` +
+      (entry.room ? `<span class="room">№${escapeHtml(entry.room)}</span>` : '')
+  );
+}
+
+function renderRoomView() {
+  if (!currentRoom) { renderEmptyMsg('Кабинеты не найдены.'); return; }
+  renderGrid(
+    (className, entry) => entry.room === currentRoom,
+    (className, entry) => `<span class="klass-tag">${escapeHtml(className)}</span>` +
+      `<span class="subject">${escapeHtml(entry.subject)}</span>` +
+      (entry.teacher ? `<span class="teacher">${escapeHtml(entry.teacher)}</span>` : '')
+  );
+}
+
+function renderSubjectView() {
+  if (!currentSubject) { renderEmptyMsg('Предметы не найдены.'); return; }
+  renderGrid(
+    (className, entry) => entry.subject === currentSubject,
+    (className, entry) => `<span class="klass-tag">${escapeHtml(className)}</span>` +
+      (entry.teacher ? `<span class="teacher">${escapeHtml(entry.teacher)}</span>` : '') +
+      (entry.room ? `<span class="room">№${escapeHtml(entry.room)}</span>` : '')
+  );
+}
+
+function renderTimeView() {
+  document.getElementById('thead').innerHTML = TIME_THEAD;
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  const bucket = (scheduleData[currentDay] && scheduleData[currentDay][currentLesson]) ? scheduleData[currentDay][currentLesson] : {};
+  const classNames = Object.keys(classMap);
+  let any = false;
+  classNames.forEach(className => {
+    const entry = bucket[className];
+    const tr = document.createElement('tr');
+    if (entry && entry.subject) {
+      any = true;
+      tr.innerHTML = `<td><span class="klass-tag">${escapeHtml(className)}</span></td>` +
+        `<td><span class="subject">${escapeHtml(entry.subject)}</span></td>` +
+        `<td>${entry.teacher ? escapeHtml(entry.teacher) : '—'}</td>` +
+        `<td>${entry.room ? '№' + escapeHtml(entry.room) : '—'}</td>`;
+    } else {
+      tr.innerHTML = `<td><span class="klass-tag">${escapeHtml(className)}</span></td>` +
+        `<td class="empty">—</td><td class="empty">—</td><td class="empty">—</td>`;
+    }
+    tbody.appendChild(tr);
+  });
+  if (!any && classNames.length === 0) {
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="4">Нет данных для этого времени.</td></tr>`;
+  }
+}
+
+function renderEmptyMsg(msg) {
+  document.getElementById('thead').innerHTML = GRID_THEAD;
+  document.getElementById('tbody').innerHTML = `<tr class="loading-row"><td colspan="7">${escapeHtml(msg)}</td></tr>`;
+}
+
+function render() {
+  if (mode === 'class') renderClassView();
+  else if (mode === 'teacher') renderTeacherView();
+  else if (mode === 'room') renderRoomView();
+  else if (mode === 'subject') renderSubjectView();
+  else if (mode === 'time') renderTimeView();
+}
+
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const label = document.getElementById('statusText');
+  dot.className = 'status-dot' + (state === 'live' ? ' live' : state === 'error' ? ' error' : '');
+  label.textContent = text;
+}
+function showError(msg) {
+  const banner = document.getElementById('errorBanner');
+  banner.innerHTML = msg;
+  banner.classList.add('show');
+}
+function hideError() { document.getElementById('errorBanner').classList.remove('show'); }
+
+async function loadSchedule() {
+  setStatus('loading', 'Обновляю данные из таблицы…');
+  hideError();
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&_=${Date.now()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    teacherSet = new Set(); roomSet = new Set(); subjectSet = new Set();
+    scheduleData = buildSchedule(rows);
+    populateControls();
+    render();
+    const now = new Date();
+    setStatus('live', 'Обновлено: ' + now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }));
+  } catch (err) {
+    setStatus('error', 'Не удалось обновить');
+    showError(
+      'Не получилось загрузить данные из Google Таблицы напрямую в этом просмотрщике — так бывает в песочнице предпросмотра. ' +
+      'Сохраните файл и откройте как обычную веб-страницу (например, через GitHub Pages), и загрузка будет работать в браузере.'
+    );
+  }
+}
+
+document.querySelectorAll('.mode-switch button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    mode = btn.dataset.mode;
+    document.querySelectorAll('.mode-switch button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.controls').forEach(c => c.classList.remove('active'));
+    document.getElementById('ctrl-' + mode).classList.add('active');
+    render();
+  });
+});
+
+document.getElementById('classSelect').addEventListener('change', e => { currentClass = e.target.value; render(); });
+document.getElementById('teacherInput').addEventListener('input', e => { currentTeacher = e.target.value.trim(); render(); });
+document.getElementById('roomSelect').addEventListener('change', e => { currentRoom = e.target.value; render(); });
+document.getElementById('subjectSelect').addEventListener('change', e => { currentSubject = e.target.value; render(); });
+document.getElementById('daySelect').addEventListener('change', e => { currentDay = e.target.value; render(); });
+document.getElementById('lessonSelect').addEventListener('change', e => { currentLesson = e.target.value; render(); });
+document.getElementById('refreshBtn').addEventListener('click', loadSchedule);
+
+loadSchedule();
+setInterval(loadSchedule, 5 * 60 * 1000);
+</script>
+
+</body>
+</html>
