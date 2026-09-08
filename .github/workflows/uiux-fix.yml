@@ -1,0 +1,102 @@
+name: UI UX fix
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: ${{ !startsWith(github.event.head_commit.message, 'UIUX-BOT') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          css='''<style>
+          /* UI/UX polish */
+          :root{--shadow:0 8px 28px rgba(16,42,76,.08);--focus:0 0 0 3px rgba(23,105,170,.18)}
+          html{scroll-behavior:smooth}
+          body{min-height:100vh;-webkit-tap-highlight-color:transparent}
+          .wrap{max-width:1160px;padding:14px}
+          .hero{box-shadow:var(--shadow);position:relative;overflow:hidden}
+          .hero:after{content:"";position:absolute;inset:auto -80px -100px auto;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none}
+          .tabs{position:sticky;top:0;z-index:50;padding:6px 2px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);scrollbar-width:none}
+          .tabs::-webkit-scrollbar{display:none}
+          .tab{box-shadow:0 1px 2px rgba(16,42,76,.04);transition:.16s ease}
+          .tab:active,.btn:active,.iconbtn:active{transform:scale(.98)}
+          .tab:focus-visible,.btn:focus-visible,.iconbtn:focus-visible,.day-select:focus-visible,input:focus-visible,select:focus-visible{outline:0;box-shadow:var(--focus)}
+          .toolbar{align-items:stretch}
+          .field{min-height:48px;box-shadow:0 1px 2px rgba(16,42,76,.03)}
+          .field input,.field select{font-size:15px}
+          .search{min-width:260px}
+          .search input{font-weight:650}
+          .searchSuggest{left:0;right:0;top:calc(100% + 8px);padding:6px;box-shadow:0 18px 42px rgba(16,42,76,.18)}
+          .searchSuggest button{min-height:44px;font-size:14px}
+          .card{box-shadow:0 2px 10px rgba(16,42,76,.035)}
+          .next{padding:2px 0}
+          .lesson.current .box{box-shadow:0 7px 20px rgba(23,105,170,.08)}
+          .box{transition:border-color .16s ease,box-shadow .16s ease}
+          .box:active{box-shadow:0 2px 10px rgba(16,42,76,.07)}
+          .stat{background:linear-gradient(180deg,var(--card),color-mix(in srgb,var(--bg) 35%,var(--card)));}
+          .empty{min-height:80px;display:grid;place-items:center}
+          .status{position:relative}
+          .status .dot{animation:pulseDot 2s infinite}
+          @keyframes pulseDot{0%,100%{opacity:1}50%{opacity:.45}}
+          .btn,.iconbtn{min-height:46px}
+          @media(max-width:760px){
+            .wrap{padding:7px}
+            .hero{border-radius:18px;padding:15px}
+            .title{font-size:clamp(32px,12vw,46px)}
+            .now{margin-top:18px}
+            .now h2{font-size:clamp(25px,8vw,34px)}
+            .tabs{margin:8px -7px 10px;padding:6px 7px}
+            .tab{padding:9px 12px}
+            .toolbar{gap:7px}
+            .field{min-height:50px}
+            .searchSuggest{max-height:52vh}
+            .card{border-radius:15px;padding:14px;margin-bottom:10px}
+            .card h3{font-size:22px}
+            .next b{font-size:21px}
+            .ltime{font-size:11px}
+            .box{padding:12px}
+            .subj{font-size:19px}
+            .status{font-size:11px}
+            .status #updated{white-space:nowrap}
+          }
+          @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+          </style>'''
+          s=s.replace('</style></head>','</style>'+css+'</head>',1)
+          s=s.replace('<button class="iconbtn" id="favBtn">☆ Мой класс</button>','<button class="iconbtn" id="favBtn" type="button" aria-pressed="false">☆ Мой класс</button>',1)
+          s=s.replace('<button class="btn" id="refresh">Обновить</button>','<button class="btn" id="refresh" type="button">Обновить</button>',1)
+          old="function controls(){fill('classSelect',classes,chosen);fill('weekClass',classes,chosen);fill('settingsClass',classes,chosen);fill('roomSelect',rooms,selectedRoom);fill('subjectSelect',subjects,selectedSubject);fill('viewDay',DAYS,viewDay);fill('timeDay',DAYS,viewDay);$('teachers').innerHTML=teachers.map(v=>'<option value=\"'+esc(v)+'\">').join('')}"
+          new="function controls(){fill('classSelect',classes,chosen);fill('weekClass',classes,chosen);fill('settingsClass',classes,chosen);fill('roomSelect',rooms,selectedRoom);fill('subjectSelect',subjects,selectedSubject);fill('viewDay',DAYS,viewDay);fill('timeDay',DAYS,viewDay);$('teachers').innerHTML=teachers.map(v=>'<option value=\"'+esc(v)+'\">').join('');let ti=$('teacherInput');if(ti)ti.value=selectedTeacher}"
+          s=s.replace(old,new,1)
+          old="function renderMode(){document.querySelectorAll('.hidden').forEach(x=>{});['teacherBox','roomBox','subjectBox'].forEach(id=>$(id).classList.add('hidden'));['timeCard','weekCard','statsCard','settingsCard','tableCard','searchCard','scheduleCard'].forEach(id=>$(id).classList.add('hidden'));$('nextCard').classList.toggle('hidden',mode!=='class');"
+          new="function renderMode(){document.querySelectorAll('.hidden').forEach(x=>{});['teacherBox','roomBox','subjectBox'].forEach(id=>$(id).classList.add('hidden'));['timeCard','weekCard','statsCard','settingsCard','tableCard','searchCard','scheduleCard'].forEach(id=>$(id).classList.add('hidden'));$('nextCard').classList.toggle('hidden',mode!=='class');"
+          s=s.replace(old,new,1)
+          old="$('refresh').onclick=load;$('classSelect').onchange=e=>{chosen=e.target.value;localStorage.setItem('class48',chosen);renderMode();updateHeader()};$('search').onfocus=renderSearchSuggestions;"
+          new="$('refresh').onclick=load;$('classSelect').onchange=e=>{chosen=e.target.value;localStorage.setItem('class48',chosen);renderMode();updateHeader()};$('teacherInput').oninput=e=>{selectedTeacher=clean(e.target.value);renderMode()};$('roomSelect').onchange=e=>{selectedRoom=e.target.value;renderMode()};$('subjectSelect').onchange=e=>{selectedSubject=e.target.value;renderMode()};$('favBtn').onclick=()=>{chosen=$('classSelect').value||chosen;localStorage.setItem('class48',chosen);$('favBtn').textContent='★ Мой класс';$('favBtn').setAttribute('aria-pressed','true');updateHeader();renderMode()};$('search').onfocus=renderSearchSuggestions;"
+          s=s.replace(old,new,1)
+          s=s.replace("$('viewDay').onchange=e=>{viewDay=e.target.value;localStorage.setItem('day48',viewDay);timeline()};$('timeDay').onchange=e=>{viewDay=e.target.value;renderTime()};", "$('viewDay').onchange=e=>{viewDay=e.target.value;localStorage.setItem('day48',viewDay);timeline()};$('timeDay').onchange=e=>{viewDay=e.target.value;localStorage.setItem('day48',viewDay);renderTime()};")
+          s=s.replace("document.body.classList.toggle('dark',localStorage.getItem('theme48')==='dark');viewDay=todayName()||DAYS[0];$('dayName').textContent", "document.body.classList.toggle('dark',localStorage.getItem('theme48')==='dark');if(!DAYS.includes(viewDay))viewDay=todayName()||DAYS[0];$('dayName').textContent")
+          s=s.replace("$('themeBtn').onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('theme48',document.body.classList.contains('dark')?'dark':'light')};", "$('themeBtn').textContent=document.body.classList.contains('dark')?'☀️ Светлая тема':'🌙 Тёмная тема';$('themeBtn').onclick=()=>{document.body.classList.toggle('dark');let d=document.body.classList.contains('dark');localStorage.setItem('theme48',d?'dark':'light');$('themeBtn').textContent=d?'☀️ Светлая тема':'🌙 Тёмная тема'};")
+          marker="function controls(){"
+          # rebuild filter arrays on cached/offline data
+          inject="function rebuildLists(){let ts=new Set(),rs=new Set(),ss=new Set();for(const d of DAYS)for(const n of Object.keys(data[d]||{}))for(const c of Object.keys(data[d][n]||{})){let e=data[d][n][c];if(!e||!validSubject(e.subject))continue;if(e.teacher)ts.add(e.teacher);if(e.room)rs.add(e.room);ss.add(e.subject)}teachers=[...ts].sort((a,b)=>a.localeCompare(b,'ru'));rooms=[...rs].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));subjects=[...ss].sort((a,b)=>a.localeCompare(b,'ru'))}\n"
+          if 'function rebuildLists()' not in s:s=s.replace(marker,inject+marker,1)
+          s=s.replace('sanitizeData();data=Object.fromEntries(DAYS.map(d=>[d,Object.fromEntries', 'sanitizeData();rebuildLists();data=Object.fromEntries(DAYS.map(d=>[d,Object.fromEntries',1)
+          # the replacement above occurs before filtering; rebuild once more after cache normalization for correctness
+          s=s.replace(".filter(([n,b])=>Object.keys(b).length))]));if(!DAYS.includes(viewDay))", ".filter(([n,b])=>Object.keys(b).length))]));rebuildLists();if(!DAYS.includes(viewDay))",1)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'UIUX-BOT'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'UIUX-BOT polish schedule UI and fix controls'
+          git push
