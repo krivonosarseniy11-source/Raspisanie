@@ -1,30 +1,49 @@
-name: Fix schedule data
+name: Improve schedule UI
 on:
   push:
     branches: [main]
 permissions:
   contents: write
 jobs:
-  fix:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch schedule validation
+      - name: Patch UI and data validation
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="'- -'].includes(x)"
-          new="'- -','без названия','без названия урока','нет названия','название отсутствует','не указано','не указана','не указан'].includes(x)"
-          if old in s:
-              s=s.replace(old,new,1)
+
+          # Strong canonical subject validation: placeholders and technical values never become lessons.
+          s=re.sub(r"function validSubject\(v\)\{.*?\}\s*function validNum", """function validSubject(v){let s=clean(v);if(!s)return false;let x=s.toLowerCase().replace(/[–—−]/g,'-').replace(/[\\.\\,;:!?]+$/,'').trim();if(!x)return false;if(/^[\\-_.\\s]+$/.test(x)||/^\\d+$/.test(x))return false;const bad=['-','—','–','нет','нет урока','нет уроков','урок','урока','уроки','занятие','занятия','предмет','предметы','название','без названия','без названия урока','нет названия','название отсутствует','не указано','не указана','не указан','n/a','na','null','undefined','- -'];if(bad.includes(x))return false;if(/^(урок|занятие|предмет)(\\s*№?\\s*\\d+)?$/.test(x))return false;return true}function validNum""", s, count=1, flags=re.S)
+
+          # Native iOS/Android/browser suggestions for the global search.
+          s=s.replace('<input id="search" placeholder="Предмет, учитель, кабинет…">','<input id="search" type="search" autocomplete="off" list="searchSuggestions" placeholder="Найти предмет, учителя, кабинет…"><datalist id="searchSuggestions"></datalist>')
+
+          # Build useful suggestions from the actual loaded schedule.
+          marker="function controls(){"
+          inject="""function refreshSearchSuggestions(){let a=[...new Set([...subjects,...teachers,...rooms,...classes,...DAYS])].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'ru',{numeric:true}));$('searchSuggestions').innerHTML=a.map(v=>'<option value=\\\"'+esc(v)+'\\\">').join('')}"""
+          if 'function refreshSearchSuggestions' not in s:
+              s=s.replace(marker,inject+marker,1)
+          s=s.replace("teachers=[...ts].sort((a,b)=>a.localeCompare(b,'ru'));rooms=[...rs].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));subjects=[...ss].sort((a,b)=>a.localeCompare(b,'ru'));return out}","teachers=[...ts].sort((a,b)=>a.localeCompare(b,'ru'));rooms=[...rs].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));subjects=[...ss].sort((a,b)=>a.localeCompare(b,'ru'));refreshSearchSuggestions();return out}")
+
+          # Ensure old offline cache is sanitized with the same canonical validation.
+          s=s.replace("let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);", "let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);data=Object.fromEntries(DAYS.map(d=>[d,Object.fromEntries(Object.entries(data[d]||{}).filter(([n,b])=>validNum(n)).map(([n,b])=>[n,Object.fromEntries(Object.entries(b).filter(([c,e])=>e&&validSubject(e.subject)))]).filter(([n,b])=>Object.keys(b).length))]));")
+
+          # Search is a real search experience: selecting a suggestion searches immediately.
+          s=s.replace("$('search').oninput=doSearch;", "$('search').oninput=doSearch;$('search').onsearch=doSearch;")
+
+          # One-time patch: remove this workflow after committing the UI change.
           p.write_text(s,encoding='utf-8')
+          Path('.github/workflows/quality-fix.yml').unlink(missing_ok=True)
           PY
-      - name: Commit fix
+      - name: Commit UI patch and remove temporary workflow
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add index.html
-          git diff --cached --quiet || git commit -m "Убрать записи без названия предмета"
+          git add index.html .github/workflows/quality-fix.yml
+          git diff --cached --quiet || git commit -m "Переделать поиск и очистку уроков"
           git push
