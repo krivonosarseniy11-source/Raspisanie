@@ -15,8 +15,10 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          s=s.replace("if(!validNum(n)||!validSubject(s))continue;let subject=s.replace(/^[-–—]+\\s*/,'').trim();if(!validSubject(subject))continue;out[day][n]??={};out[day][n][c]={subject,room:r,teacher:t}", "if(!validNum(n)||!validSubject(s))continue;let subject=s.replace(/^[-–—]+\\s*/,'').trim();if(!validSubject(subject))continue;let key=clean(subject).toLowerCase();if(['предмет','название','урок','уроки'].includes(key))continue;out[day][n]??={};out[day][n][c]={subject,room:r,teacher:t}")
-          s=s.replace("let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);", "let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);data=Object.fromEntries(DAYS.map(d=>[d,Object.fromEntries(Object.entries(data[d]||{}).filter(([n,b])=>validNum(n)).map(([n,b])=>[n,Object.fromEntries(Object.entries(b).filter(([c,e])=>e&&validSubject(e.subject)))]).filter(([n,b])=>Object.keys(b).length))]));")
+          old="'- -'].includes(x)"
+          new="'- -','без названия','без названия урока','нет названия','название отсутствует','не указано','не указана','не указан'].includes(x)"
+          if old in s:
+              s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
           PY
       - name: Commit fix
@@ -24,5 +26,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add index.html
-          git diff --cached --quiet || git commit -m "Очистить статистику от записей без названия"
+          git diff --cached --quiet || git commit -m "Убрать записи без названия предмета"
           git push
