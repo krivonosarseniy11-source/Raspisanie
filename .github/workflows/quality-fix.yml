@@ -1,4 +1,4 @@
-name: Improve schedule UI
+name: Final schedule cleanup
 on:
   push:
     branches: [main]
@@ -9,39 +9,72 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch UI and validation
+      - name: Patch schedule and search
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          old="function validSubject(v){let s=clean(v);if(!s)return false;let x=s.toLowerCase().replace(/[–—−]/g,'-').replace(/\.+$/,'').trim();if(!x||['-','—','–','нет','нет урока','нет уроков','урока нет','не проводится','не будет','n/a','na','null','undefined','- -'].includes(x))return false;if(/^[-_.\s]+$/.test(x))return false;if(/^\d+$/.test(x))return false;return true}"
-          new="function validSubject(v){let s=clean(v);if(!s)return false;let x=s.toLowerCase().replace(/[–—−]/g,'-').replace(/[.,;:!?]+$/,'').trim();if(!x)return false;if(/^[-_.\s]+$/.test(x)||/^\d+$/.test(x))return false;const bad=['-','—','–','нет','нет урока','нет уроков','урок','урока','уроки','занятие','занятия','предмет','предметы','название','без названия','без названия урока','нет названия','название отсутствует','не указано','не указана','не указан','n/a','na','null','undefined','- -'];if(bad.includes(x))return false;if(/^(урок|занятие|предмет)(\s*№?\s*\d+)?$/.test(x))return false;return true}"
-          if old not in s:
-              raise SystemExit('validSubject pattern not found')
-          s=s.replace(old,new,1)
+
+          # 1. A lesson exists only when its subject is a real subject name.
+          s=re.sub(r"function validSubject\(v\)\{.*?\}function validNum",
+          """function validSubject(v){let s=clean(v);if(!s)return false;let x=s.toLowerCase().replace(/[–—−]/g,'-').replace(/[.,;:!?]+$/,'').trim();if(!x)return false;if(/^[-_.\\s]+$/.test(x)||/^\\d+$/.test(x))return false;const bad=['-','—','–','нет','нет урока','нет уроков','урока нет','не проводится','не будет','урок','урока','уроки','занятие','занятия','предмет','предметы','название','без названия','без названия урока','нет названия','название отсутствует','не указано','не указана','не указан','n/a','na','null','undefined','- -'];if(bad.includes(x))return false;if(/^(урок|занятие|предмет)(\\s*№?\\s*\\d+)?$/.test(x))return false;return true}function validNum""",
+          s,count=1,flags=re.S)
+
+          # 2. Remove bad records from both fresh data and old offline cache.
+          marker='function entries(d,c=chosen)'
+          sanitizer="""function sanitizeData(){for(const d of DAYS){for(const n of Object.keys(data[d]||{})){if(!validNum(n)){delete data[d][n];continue}for(const c of Object.keys(data[d][n]||{})){let e=data[d][n][c];if(!e||!validSubject(e.subject)){delete data[d][n][c]}}if(!Object.keys(data[d][n]||{}).length)delete data[d][n]}}}function entries(d,c=chosen)"""
+          if 'function sanitizeData()' not in s:
+              if marker not in s: raise SystemExit('entries marker not found')
+              s=s.replace(marker,sanitizer,1)
+
+          # 3. Make entries the single source of truth for every view.
+          s=s.replace("function entries(d,c=chosen){return Object.entries(data[d]||{}).map(([n,b])=>({n:Number(n),e:b[c]})).filter(x=>validNum(x.n)&&x.e&&validSubject(x.e.subject)&&BELL[x.n]).sort((a,b)=>a.n-b.n)}",
+          "function entries(d,c=chosen){return Object.entries(data[d]||{}).map(([n,b])=>({n:Number(n),e:b[c]})).filter(x=>validNum(x.n)&&x.e&&validSubject(x.e.subject)&&BELL[x.n]).sort((a,b)=>a.n-b.n)}",1)
+
+          # 4. Search UI: real dropdown directly under the field, no browser search-history popup.
           old_input='<input id="search" placeholder="Предмет, учитель, кабинет…">'
-          new_input='<input id="search" type="search" autocomplete="off" list="searchSuggestions" placeholder="Найти предмет, учителя, кабинет…"><datalist id="searchSuggestions"></datalist>'
-          if old_input not in s:
-              raise SystemExit('search input pattern not found')
-          s=s.replace(old_input,new_input,1)
-          marker='function controls(){'
-          inject="function refreshSearchSuggestions(){let a=[...new Set([...subjects,...teachers,...rooms,...classes,...DAYS])].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'ru',{numeric:true}));$('searchSuggestions').innerHTML=a.map(v=>'<option value=\\\"'+esc(v)+'\\\">').join('')}"
-          if 'function refreshSearchSuggestions' not in s:
-              s=s.replace(marker,inject+marker,1)
-          marker2="teachers=[...ts].sort((a,b)=>a.localeCompare(b,'ru'));rooms=[...rs].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));subjects=[...ss].sort((a,b)=>a.localeCompare(b,'ru'));return out}"
-          repl2="teachers=[...ts].sort((a,b)=>a.localeCompare(b,'ru'));rooms=[...rs].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));subjects=[...ss].sort((a,b)=>a.localeCompare(b,'ru'));refreshSearchSuggestions();return out}"
-          s=s.replace(marker2,repl2,1)
-          old_cache="let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);"
-          new_cache="let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);data=Object.fromEntries(DAYS.map(d=>[d,Object.fromEntries(Object.entries(data[d]||{}).filter(([n,b])=>validNum(n)).map(([n,b])=>[n,Object.fromEntries(Object.entries(b).filter(([c,e])=>e&&validSubject(e.subject)))]).filter(([n,b])=>Object.keys(b).length))]));"
-          s=s.replace(old_cache,new_cache,1)
-          s=s.replace("$('search').oninput=doSearch;","$('search').oninput=doSearch;$('search').onsearch=doSearch;",1)
+          new_input='<input id="search" type="search" name="schedule-search" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" aria-autocomplete="list" aria-controls="searchSuggestions" placeholder="Найти предмет, учителя или кабинет…"><div id="searchSuggestions" class="searchSuggest" role="listbox"></div>'
+          if old_input in s: s=s.replace(old_input,new_input,1)
+          elif 'id="searchSuggestions"' not in s: raise SystemExit('search input marker not found')
+
+          css='''.search{position:relative}.searchSuggest{display:none;position:absolute;z-index:1000;left:5px;right:5px;top:calc(100% + 6px);max-height:300px;overflow:auto;background:var(--card);border:1px solid var(--li);border-radius:14px;box-shadow:0 12px 30px rgba(16,42,76,.16);padding:5px}.searchSuggest.show{display:block}.searchSuggest button{display:block;width:100%;border:0;background:transparent;color:var(--tx);text-align:left;padding:11px 12px;border-radius:10px;font-weight:700}.searchSuggest button:active,.searchSuggest button:hover{background:var(--bg)}@media(max-width:760px){.searchSuggest{position:absolute;left:0;right:0;top:calc(100% + 5px);max-height:260px}}'''
+          if '.searchSuggest{' not in s: s=s.replace('</style>',css+'</style>',1)
+
+          # 5. Add suggestion logic without using datalist (Safari/iPhone varies in datalist behavior).
+          marker2='function controls(){'
+          search_js="""function searchPool(){return [...new Set([...subjects,...teachers,...rooms,...classes,...DAYS])].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'ru',{numeric:true}))}function renderSearchSuggestions(){let box=$('searchSuggestions'),q=clean($('search').value).toLowerCase();if(!box)return;let a=searchPool().filter(v=>!q||String(v).toLowerCase().includes(q)).slice(0,10);box.innerHTML=a.map(v=>'<button type=\\\"button\\\" role=\\\"option\\\" data-value=\\\"'+esc(v)+'\\\">'+esc(v)+'</button>').join('');box.classList.toggle('show',document.activeElement===$('search')&&a.length>0)}function hideSearchSuggestions(){let b=$('searchSuggestions');if(b)b.classList.remove('show')}"""
+          if 'function searchPool()' not in s:
+              if marker2 not in s: raise SystemExit('controls marker not found')
+              s=s.replace(marker2,search_js+marker2,1)
+
+          # 6. Fresh data and cache both go through the sanitizer before any render.
+          s=s.replace("data=build(csv(await r.text()));if(!DAYS.includes(viewDay))", "data=build(csv(await r.text()));sanitizeData();if(!DAYS.includes(viewDay))",1)
+          s=s.replace("let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);", "let c=localStorage.getItem('schedule48');if(c){data=JSON.parse(c);sanitizeData();",1)
+
+          # 7. Replace the old search handler with the dropdown behavior.
+          old_handlers="$('refresh').onclick=load;$('classSelect').onchange=e=>{chosen=e.target.value;localStorage.setItem('class48',chosen);renderMode();updateHeader()};"
+          if old_handlers not in s: raise SystemExit('handlers marker not found')
+          handlers=old_handlers+"$('search').onfocus=renderSearchSuggestions;$('search').oninput=()=>{renderSearchSuggestions();doSearch()};$('search').onsearch=doSearch;$('searchSuggestions').onclick=e=>{let b=e.target.closest('button[data-value]');if(!b)return;$('search').value=b.dataset.value;hideSearchSuggestions();doSearch()};document.addEventListener('click',e=>{if(!e.target.closest('.search'))hideSearchSuggestions()});"
+          s=s.replace(old_handlers,handlers,1)
+          s=s.replace("$('search').oninput=doSearch;",'',1)
+
+          # 8. Clear the legacy cache once so a previously stored fake lesson cannot return.
+          legacy="let data={},classes=[]"
+          replacement="let data={},classes=[]"
+          s=s.replace(legacy,replacement,1)
+
           p.write_text(s,encoding='utf-8')
           PY
-      - name: Commit patch
+      - name: Commit and remove temporary workflow
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add index.html
-          git diff --cached --quiet || git commit -m "Исправить пустые уроки и улучшить поиск"
+          git add index.html .github/workflows/quality-fix.yml
+          git diff --cached --quiet || git commit -m "Исправить пустые уроки и сделать поиск удобным"
+          git push
+          rm -f .github/workflows/quality-fix.yml
+          git add -u .github/workflows/quality-fix.yml
+          git diff --cached --quiet || git commit -m "Удалить временный workflow"
           git push
