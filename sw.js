@@ -1,4 +1,4 @@
-const CACHE='raspisanie-v16';
+const CACHE='raspisanie-v17';
 const APP=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 const ID='1tGzeVcjc4gKja-uegpOFkvOW61I50SP3zPipSCfTxqY';
 const jsonp=(url)=>new Promise((ok,bad)=>{const cb='__g_'+Date.now()+Math.random().toString(36).slice(2),s=document.createElement('script'),t=setTimeout(()=>{cleanup();bad(Error('timeout'))},15000);function cleanup(){clearTimeout(t);delete window[cb];s.remove()}window[cb]=x=>{cleanup();ok(x)};s.onerror=()=>{cleanup();bad(Error('request failed'))};s.src=url+'&tqx=out:json;responseHandler:'+cb+'&_='+Date.now();document.head.appendChild(s)});
