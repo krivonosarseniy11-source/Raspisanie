@@ -22,6 +22,25 @@ button,input,select{font:inherit}button{border:0;background:none;color:inherit;c
 .bottom{position:fixed;z-index:50;bottom:0;left:50%;transform:translateX(-50%);width:min(820px,100%);display:grid;grid-template-columns:repeat(5,1fr);gap:5px;padding:6px 7px calc(6px + env(safe-area-inset-bottom));background:#fffffff2;border-top:1px solid var(--line);backdrop-filter:blur(20px)}.nav{min-height:54px;padding:5px 2px;border-radius:13px;color:var(--muted);font-size:9px;font-weight:900}.nav .ico{display:block;font-size:20px;line-height:21px;margin-bottom:1px}.nav.active{background:var(--accent2);color:var(--accent)}.nav:active{transform:scale(.97)}
 .dark{--bg:#0b1118;--surface:#121a23;--surface2:#17212c;--text:#edf4f9;--muted:#98a8ba;--line:#283746;--accent:#72a2ff;--accent2:#17304f;--green:#5ed39a;--green2:#153a2a;--amber:#e6b95f;--amber2:#3c311b}.dark .bottom{background:#101820f2}.dark .hero{background:linear-gradient(145deg,#101821,#1a3b73)}.dark .next{background:#14243a}.dark .control{color:var(--text)}
 @media(max-width:620px){.time-table{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr auto auto}.shift{width:94px}}@media(max-width:380px){.days{gap:4px}.day{font-size:9px}.lesson{grid-template-columns:48px 8px 1fr;gap:7px}.break{margin-left:63px}.time{font-size:8px}}@media(min-width:821px){body{padding-bottom:10px}.bottom{position:static;transform:none;margin:8px auto;border:1px solid var(--line);border-radius:17px}}
+
+/* Student productivity additions */
+.task-tools{display:grid;grid-template-columns:1fr auto;gap:7px;margin:12px 0}
+.task-tools input,.task-tools select,.task-tools button{min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--text)}
+.task-tools button,.primary-action{background:var(--accent)!important;color:white!important;border-color:var(--accent)!important;font-weight:850}
+.task-tools .wide{grid-column:1/-1}
+.task-list{display:grid;gap:7px;margin-top:10px}
+.task-item{display:grid;grid-template-columns:22px 1fr auto;gap:9px;align-items:start;padding:11px;border:1px solid var(--line);border-radius:13px;background:var(--surface2)}
+.task-item input{width:18px;height:18px;accent-color:var(--accent);margin-top:2px}
+.task-item.done .task-name{text-decoration:line-through;opacity:.55}
+.task-name{font-size:12px;font-weight:800;overflow-wrap:anywhere}
+.task-meta{margin-top:4px;font-size:9px;color:var(--muted)}
+.task-delete{padding:3px 7px;border-radius:8px;color:var(--danger);font-size:18px}
+.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.feature-btn{padding:13px;border:1px solid var(--line);border-radius:14px;background:var(--surface2);text-align:left;font-weight:850;font-size:11px}
+.feature-btn span{display:block;font-size:20px;margin-bottom:5px}
+.feature-btn small{display:block;margin-top:4px;color:var(--muted);font-size:9px;font-weight:500}
+.task-summary{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.task-pill{padding:6px 9px;border-radius:9px;background:var(--accent2);color:var(--accent);font-size:10px;font-weight:850}
 </style>
 </head>
 <body>
@@ -53,5 +72,34 @@ function render(){if(!classes.includes(cls))cls=classes[0]||'';$('classSelect').
 async function load(){const btn=$('refresh');btn.disabled=true;$('status').textContent='Обновляем…';try{const u=`https://docs.google.com/spreadsheets/d/${ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET)}&t=${Date.now()}`,r=await fetch(u,{cache:'no-store'});if(!r.ok)throw Error('network');const fresh=build(csv(await r.text()));if(!fresh.length)throw Error('empty');data=fresh;classes=[...new Set(data.map(x=>x.className))].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(KEY+'-classes',JSON.stringify(classes));$('status').textContent='Синхронизировано';$('updated').textContent=new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});render()}catch(e){try{data=JSON.parse(localStorage.getItem(KEY)||'[]').filter(x=>valid(x.subject));classes=JSON.parse(localStorage.getItem(KEY+'-classes')||'[]')}catch(_){data=[];classes=[]}$('status').textContent=data.length?'Офлайн-версия':'Нет данных';$('updated').textContent='';render()}finally{btn.disabled=false}}
 $('classSelect').onchange=e=>{cls=e.target.value;localStorage.setItem('class',cls);render()};$('shiftSelect').onchange=e=>{shift=+e.target.value;localStorage.setItem('shift',shift);render()};$('refresh').onclick=load;document.querySelectorAll('.nav').forEach(b=>b.onclick=()=>show(b.dataset.page));$('searchInput').oninput=search;$('clearSearch').onclick=()=>{$('searchInput').value='';search();$('searchInput').focus()};$('themeBtn').onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('dark',document.body.classList.contains('dark'))};$('bellsBtn').onclick=()=>show('bells');$('notifyBtn').onclick=async()=>{if(!('Notification'in window))return alert('Этот браузер не поддерживает уведомления.');if(Notification.permission==='default')await Notification.requestPermission();alert(Notification.permission==='granted'?'Уведомления разрешены.':'Уведомления не разрешены.')};$('clearBtn').onclick=()=>{if(confirm('Удалить сохранённое расписание?')){localStorage.removeItem(KEY);localStorage.removeItem(KEY+'-classes');location.reload()}};if(localStorage.getItem('dark')==='true')document.body.classList.add('dark');let sx=0;$('scheduleCard').ontouchstart=e=>sx=e.changedTouches[0].clientX;$('scheduleCard').ontouchend=e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>55){dayIndex=Math.max(0,Math.min(5,dayIndex+(dx<0?1:-1)));schedule()}};setInterval(()=>{header();if(dayIndex===today())schedule()},30000);bells();load();
 </script>
-</body>
+
+<script>
+(()=>{
+ const TASK_KEY='raspisanie-tasks-v1',REM_KEY='raspisanie-reminders-v1';
+ const $x=id=>document.getElementById(id);
+ const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ let tasks=[];try{tasks=JSON.parse(localStorage.getItem(TASK_KEY)||'[]')}catch(_){}
+ const save=()=>localStorage.setItem(TASK_KEY,JSON.stringify(tasks));
+ const dateISO=d=>{const x=new Date(d);return new Date(x.getTime()-x.getTimezoneOffset()*60000).toISOString().slice(0,10)};
+ const subjectSelect=$x('taskSubject');
+ function updateSubjects(){if(!subjectSelect)return;const old=subjectSelect.value;subjectSelect.innerHTML='<option value="">Без предмета</option>'+[...new Set((typeof entries==='function'?entries():[]).map(x=>x.subject).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru')).map(s=>'<option value="'+safe(s)+'">'+safe(s)+'</option>').join('');subjectSelect.value=old}
+ function renderTasks(){const open=tasks.filter(t=>!t.done).length;$x('taskOpenCount').textContent=open+' '+(open===1?'задача':'задач');$x('taskDoneCount').textContent=(tasks.length-open)+' выполнено';$x('taskList').innerHTML=tasks.slice().sort((a,b)=>(a.done-b.done)||(a.due||'9999').localeCompare(b.due||'9999')).map(t=>'<div class="task-item '+(t.done?'done':'')+'"><input type="checkbox" data-task-check="'+t.id+'" '+(t.done?'checked':'')+' aria-label="Отметить выполненной"><div><div class="task-name">'+safe(t.title)+'</div><div class="task-meta">'+(t.subject?safe(t.subject)+' · ':'')+(t.due?'Срок: '+safe(new Date(t.due+'T12:00:00').toLocaleDateString('ru-RU')):'Без срока')+'</div></div><button class="task-delete" data-task-delete="'+t.id+'" aria-label="Удалить задачу">×</button></div>').join('')||'<div class="empty">Пока задач нет — добавь домашнее задание или важное дело.</div>';
+ $x('taskList').querySelectorAll('[data-task-check]').forEach(el=>el.onchange=()=>{const t=tasks.find(t=>t.id===el.dataset.taskCheck);if(t){t.done=el.checked;save();renderTasks()}});$x('taskList').querySelectorAll('[data-task-delete]').forEach(el=>el.onclick=()=>{tasks=tasks.filter(t=>t.id!==el.dataset.taskDelete);save();renderTasks()})}
+ $x('taskDate').value=dateISO(new Date());
+ $x('taskAdd').onclick=()=>{const title=$x('taskName').value.trim();if(!title){$x('taskName').focus();return}tasks.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,subject:subjectSelect.value,due:$x('taskDate').value,done:false,created:Date.now()});save();$x('taskName').value='';renderTasks()};
+ $x('taskName').addEventListener('keydown',e=>{if(e.key==='Enter')$x('taskAdd').click()});
+ function download(name,content,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500)}
+ $x('exportIcs').onclick=()=>{if(typeof entries!=='function'||!entries().length){alert('Для выбранного класса нет заполненных уроков.');return}const fmt=(day,time)=>{const [hh,mm]=time.split(':').map(Number);const d=new Date();const delta=((day+1-d.getDay()+7)%7)||7;d.setDate(d.getDate()+delta);d.setHours(hh,mm,0,0);return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'T'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0')+'00'};
+ const escI=s=>String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+ let lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Raspisanie Lyceum 48//RU','CALSCALE:GREGORIAN','METHOD:PUBLISH'];entries().forEach(x=>{lines.push('BEGIN:VEVENT','UID:'+x.day+'-'+x.lesson+'-'+encodeURIComponent(x.subject)+'@raspisanie48','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,''),'DTSTART:'+fmt(x.day,x.time[0]),'DTEND:'+fmt(x.day,x.time[1]),'SUMMARY:'+escI(x.subject),'DESCRIPTION:'+escI([x.teacher,x.room?'Кабинет '+x.room:'',cls].filter(Boolean).join(' · ')),'END:VEVENT')});lines.push('END:VCALENDAR');download('raspisanie-'+String(cls).replace(/[^\wа-яё-]/gi,'-')+'.ics',lines.join('\r\n'),'text/calendar;charset=utf-8')};
+ $x('copyToday').onclick=async()=>{const day=typeof today==='function'?today():0,es=typeof dayEntries==='function'?dayEntries(day):[];const content='Расписание · '+(typeof DAYS!=='undefined'?DAYS[day]:'сегодня')+' · '+cls+'\n'+(es.map(x=>x.lesson+'. '+x.time.join('–')+' — '+x.subject+(x.room?' (каб. '+x.room+')':'')).join('\n')||'Уроки не найдены');try{await navigator.clipboard.writeText(content);alert('Расписание скопировано!')}catch(_){prompt('Скопируй расписание:',content)}};
+ let reminders=localStorage.getItem(REM_KEY)==='1';function reminderUI(){$x('reminderState').textContent=reminders?'Включены':'Выключены';$x('reminderToggle').querySelector('span').textContent=reminders?'🔔':'🔕'}
+ $x('reminderToggle').onclick=async()=>{if(!('Notification'in window)){alert('Уведомления не поддерживаются этим браузером.');return}if(!reminders&&Notification.permission!=='granted'){const p=await Notification.requestPermission();if(p!=='granted'){alert('Разрешение не выдано.');return}}reminders=!reminders;localStorage.setItem(REM_KEY,reminders?'1':'0');reminderUI();if(reminders)new Notification('Расписание',{body:'Напоминания включены, пока приложение открыто.'})};
+ let notified='';setInterval(()=>{if(!reminders||!('Notification'in window)||Notification.permission!=='granted'||typeof entries!=='function'||typeof today!=='function')return;const n=new Date(),m=n.getHours()*60+n.getMinutes(),x=entries().find(x=>x.day===today()&&Math.abs(m-mins(x.time[0]))<=1),key=x?dateISO(n)+'-'+x.lesson:'';if(x&&key!==notified){notified=key;new Notification('Скоро урок: '+x.subject,{body:x.time[0]+' · '+(x.room?'Кабинет '+x.room:'кабинет не указан')})}},30000);
+ $x('shareApp').onclick=async()=>{const share={title:'Расписание — Лицей №48',text:'Моё расписание уроков',url:location.href};if(navigator.share){try{await navigator.share(share)}catch(_){}}else{try{await navigator.clipboard.writeText(location.href);alert('Ссылка скопирована')}catch(_){prompt('Ссылка на приложение',location.href)}}};
+ const oldRender=window.render;updateSubjects();renderTasks();reminderUI();
+ document.querySelectorAll('.nav').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='more'){updateSubjects();renderTasks()}}));
+ const originalClassChange=$x('classSelect').onchange;$x('classSelect').addEventListener('change',()=>{setTimeout(updateSubjects,0)});
+})();
+</script></body>
 </html>
