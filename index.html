@@ -53,7 +53,23 @@ button,input,select{font:inherit}button{border:0;background:none;color:inherit;c
 <section id="page-week" class="page"><div class="card"><div class="head"><h2>Неделя</h2><small id="weekClass"></small></div><div id="weekGrid"></div></div></section>
 <section id="page-stats" class="page"><div class="card"><div class="head"><h2>Статистика</h2><small>заполненные уроки</small></div><div class="stats"><div class="stat"><b id="stToday">0</b><span>сегодня</span></div><div class="stat"><b id="stWeek">0</b><span>за неделю</span></div><div class="stat"><b id="stHours">0</b><span>учебных часов</span></div><div class="stat"><b id="stRemain">0</b><span>осталось сегодня</span></div></div><div class="sttitle">Предметы за неделю</div><div id="subjectStats"></div></div></section>
 <section id="page-bells" class="page"><div class="card"><div class="head"><h2>Звонки</h2><small>2026–2027</small></div><div class="time-table"><div class="shift-card"><div class="shift-title">1 смена</div><div id="shift1"></div></div><div class="shift-card"><div class="shift-title">2 смена</div><div id="shift2"></div></div></div></div></section>
-<section id="page-more" class="page"><div class="card"><div class="head"><h2>Ещё</h2><small>настройки</small></div><div class="actions"><button class="action" id="themeBtn">🌙 Тёмная тема<small>Переключить оформление</small></button><button class="action" id="bellsBtn">🔔 Время звонков<small>Открыть расписание уроков и перемен</small></button><button class="action" id="notifyBtn">📌 Уведомления<small>Настройка уведомлений браузера</small></button><button class="action danger" id="clearBtn">Очистить данные<small>Удалить локальный кэш расписания</small></button></div></div></section>
+<section id="page-more" class="page"><div class="card"><div class="head"><h2>Ещё</h2><small>настройки</small></div><div class="actions"><button class="action" id="themeBtn">🌙 Тёмная тема<small>Переключить оформление</small></button><button class="action" id="bellsBtn">🔔 Время звонков<small>Открыть расписание уроков и перемен</small></button><button class="action" id="notifyBtn">📌 Уведомления<small>Настройка уведомлений браузера</small></button><button class="action danger" id="clearBtn">Очистить данные<small>Удалить локальный кэш расписания</small></button></div></div><div class="card" id="productivityCard">
+ <div class="head"><h2>Учебный помощник</h2><small>твои инструменты</small></div>
+ <div class="task-summary"><span class="task-pill" id="taskOpenCount">0 задач</span><span class="task-pill" id="taskDoneCount">0 выполнено</span></div>
+ <div class="task-tools">
+  <input id="taskName" class="wide" maxlength="140" placeholder="Что задать или не забыть?" aria-label="Название задачи">
+  <select id="taskSubject" aria-label="Предмет"><option value="">Без предмета</option></select>
+  <input id="taskDate" type="date" aria-label="Срок выполнения">
+  <button id="taskAdd" class="wide primary-action">＋ Добавить задачу</button>
+ </div>
+ <div id="taskList" class="task-list"></div>
+ <div class="feature-grid">
+  <button class="feature-btn" id="exportIcs"><span>📅</span>В календарь<small>Экспорт уроков в .ics</small></button>
+  <button class="feature-btn" id="copyToday"><span>📋</span>Скопировать день<small>Уроки одним сообщением</small></button>
+  <button class="feature-btn" id="reminderToggle"><span>🔔</span>Напоминания<small id="reminderState">Выключены</small></button>
+  <button class="feature-btn" id="shareApp"><span>↗️</span>Поделиться<small>Отправить ссылку на расписание</small></button>
+ </div>
+</div></section>
 </main></div>
 <nav class="bottom"><button class="nav active" data-page="schedule"><span class="ico">▦</span>Расписание</button><button class="nav" data-page="search"><span class="ico">⌕</span>Поиск</button><button class="nav" data-page="week"><span class="ico">▤</span>Неделя</button><button class="nav" data-page="stats"><span class="ico">◔</span>Статистика</button><button class="nav" data-page="more"><span class="ico">•••</span>Ещё</button></nav>
 <script>
